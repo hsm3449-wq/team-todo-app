@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>실시간 팀플 투두리스트</title>
+  <title>우리집 할 일 리스트</title>
   
   <!-- Firebase SDK (Realtime Database CDN) -->
   <script type="module">
@@ -1035,7 +1035,7 @@
       <div class="header__brand">
         <span class="header__icon">✓</span>
         <div>
-          <h1>실시간 팀플 리스트</h1>
+          <h1>우리집 할 일 리스트</h1>
           <p class="header__date" id="todayLabel"></p>
         </div>
       </div>
@@ -2200,17 +2200,20 @@
     function closeRepeatScopeModal() {
       elements.repeatScopeModal.classList.remove("is-open");
       elements.repeatScopeModal.setAttribute("aria-hidden", "true");
-      state.pendingAction = null;
     }
 
     async function applyRepeatScope(scope) {
       if (!state.pendingAction) return;
 
-      // 팝업창을 먼저 즉시 닫아버림 (사용자 경험 개선)
+      // 1. 실행할 데이터를 먼저 안전하게 복사해서 백업해 둠
+      const actionData = state.pendingAction;
+      
+      // 2. 팝업창을 즉시 닫고 pendingAction 초기화
       closeRepeatScopeModal();
       closeDateDetailModal();
+      state.pendingAction = null;
 
-      const { type, task, formData } = state.pendingAction;
+      const { type, task, formData } = actionData;
       const { ref, update, remove } = window.firebaseFns;
       const db = window.db;
 
