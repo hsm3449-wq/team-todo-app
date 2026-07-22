@@ -1169,7 +1169,6 @@
   </div>
 
   <script type="module">
-    const CATEGORY_STORAGE_KEY = "todoCategoriesApp";
     const PRESET_EMOJIS = ["📝", "✅", "📅", "💼", "🏠", "🛒", "💪", "📚", "🎯", "⭐", "❤️", "🔔"];
     
     const COLOR_PAIRS = [
@@ -1188,7 +1187,7 @@
 
     const state = {
       tasks: [],
-      categories: [],
+      categories: [...DEFAULT_CATEGORIES],
       currentView: "list",
       currentFilter: "all",
       currentCategoryFilter: "all",
@@ -1329,23 +1328,11 @@
       };
     }
 
-    function loadCategories() {
-      try {
-        const savedCats = localStorage.getItem(CATEGORY_STORAGE_KEY);
-        state.categories = savedCats ? JSON.parse(savedCats) : [...DEFAULT_CATEGORIES];
-      } catch {
-        state.categories = [...DEFAULT_CATEGORIES];
-      }
-    }
-
-    function saveCategories() {
-      localStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(state.categories));
-    }
-
     function initFirebaseSync() {
       const { ref, onValue } = window.firebaseFns;
       const db = window.db;
 
+      // 할 일 동기화
       onValue(ref(db, "tasks"), (snapshot) => {
         const data = snapshot.val();
         const loadedTasks = [];
@@ -1357,8 +1344,33 @@
         state.tasks = loadedTasks;
         renderAll();
       }, (error) => {
-        console.error("데이터 동기화 실패: ", error);
+        console.error("할 일 동기화 실패: ", error);
       });
+
+      // 카테고리 동기화
+      onValue(ref(db, "categories"), (snapshot) => {
+        const data = snapshot.val();
+        if (data && Array.isArray(data)) {
+          state.categories = data;
+        } else {
+          // 데이터가 없으면 기본값 세팅
+          set(ref(db, "categories"), DEFAULT_CATEGORIES);
+          state.categories = [...DEFAULT_CATEGORIES];
+        }
+        renderAll();
+      }, (error) => {
+        console.error("카테고리 동기화 실패: ", error);
+      });
+    }
+
+    async function saveCategoriesToDB(newCategories) {
+      const { ref, set } = window.firebaseFns;
+      const db = window.db;
+      try {
+        await set(ref(db, "categories"), newCategories);
+      } catch (err) {
+        console.error("카테고리 저장 실패", err);
+      }
     }
 
     function sortTasks(tasks) {
@@ -2241,7 +2253,7 @@
           }
 
           state.categories[index] = newName;
-          saveCategories();
+          await saveCategoriesToDB(state.categories);
           renderCategoryManageList();
           alert("카테고리 이름이 수정되었습니다.");
         });
@@ -2250,13 +2262,13 @@
         delBtn.type = "button";
         delBtn.className = "task-delete";
         delBtn.textContent = "×";
-        delBtn.addEventListener("click", () => {
+        delBtn.addEventListener("click", async () => {
           if (state.categories.length <= 1) {
             alert("최소 하나의 카테고리는 존재해야 합니다.");
             return;
           }
           state.categories = state.categories.filter(c => c !== cat);
-          saveCategories();
+          await saveCategoriesToDB(state.categories);
           renderCategoryManageList();
         });
 
@@ -2269,7 +2281,7 @@
       });
     }
 
-    function addCategory() {
+    async function addCategory() {
       const val = elements.newCategoryInput.value.trim();
       if (!val) return;
       if (state.categories.includes(val)) {
@@ -2277,7 +2289,7 @@
         return;
       }
       state.categories.push(val);
-      saveCategories();
+      await saveCategoriesToDB(state.categories);
       elements.newCategoryInput.value = "";
       renderCategoryManageList();
     }
@@ -2318,7 +2330,6 @@
     }
 
     function init() {
-      loadCategories();
       initCustomizePickers();
       setDefaultFormValues();
       
