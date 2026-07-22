@@ -5,14 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>실시간 팀플 투두리스트</title>
   
-  <!-- Firebase SDK (Modular v10 CDN) -->
+  <!-- Firebase SDK (Realtime Database CDN) -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getDatabase, ref, set, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyD9MgGZmtYnBbaLnw9Q6KcNdOMy5n0X92A",
       authDomain: "team-todo-767fe.firebaseapp.com",
+      databaseURL: "https://team-todo-767fe-default-rtdb.firebaseio.com",
       projectId: "team-todo-767fe",
       storageBucket: "team-todo-767fe.firebasestorage.app",
       messagingSenderId: "1076000752585",
@@ -21,10 +22,10 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    const db = getDatabase(app);
 
     window.db = db;
-    window.firebaseFns = { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, onSnapshot };
+    window.firebaseFns = { ref, set, push, onValue, remove, update };
   </script>
 
   <style>
@@ -1342,14 +1343,17 @@
     }
 
     function initFirebaseSync() {
-      const { collection, onSnapshot } = window.firebaseFns;
+      const { ref, onValue } = window.firebaseFns;
       const db = window.db;
 
-      onSnapshot(collection(db, "tasks"), (snapshot) => {
+      onValue(ref(db, "tasks"), (snapshot) => {
+        const data = snapshot.val();
         const loadedTasks = [];
-        snapshot.forEach((docSnap) => {
-          loadedTasks.push(normalizeTask({ id: docSnap.id, ...docSnap.data() }));
-        });
+        if (data) {
+          Object.keys(data).forEach((key) => {
+            loadedTasks.push(normalizeTask({ id: key, ...data[key] }));
+          });
+        }
         state.tasks = loadedTasks;
         renderAll();
       }, (error) => {
@@ -1414,12 +1418,12 @@
       sourceTask.order = targetTask.order ?? (Date.now() + 1);
       targetTask.order = tempOrder;
 
-      const { doc, updateDoc } = window.firebaseFns;
+      const { ref, update } = window.firebaseFns;
       const db = window.db;
 
       try {
-        await updateDoc(doc(db, "tasks", sourceTask.id), { order: sourceTask.order });
-        await updateDoc(doc(db, "tasks", targetTask.id), { order: targetTask.order });
+        await update(ref(db, `tasks/${sourceTask.id}`), { order: sourceTask.order });
+        await update(ref(db, `tasks/${targetTask.id}`), { order: targetTask.order });
       } catch (err) {
         console.error("순서 변경 저장 실패", err);
       }
@@ -1910,17 +1914,17 @@
     }
 
     async function toggleTaskDone(id, newDoneState) {
-      const { doc, updateDoc } = window.firebaseFns;
+      const { ref, update } = window.firebaseFns;
       const db = window.db;
       try {
-        await updateDoc(doc(db, "tasks", id), { done: newDoneState });
+        await update(ref(db, `tasks/${id}`), { done: newDoneState });
       } catch (err) {
         console.error("완료 상태 변경 실패", err);
       }
     }
 
     async function addTasksData({ startDateStr, category, content, repeat, time, isDday, emoji, color }) {
-      const { collection, addDoc } = window.firebaseFns;
+      const { ref, push, set } = window.firebaseFns;
       const db = window.db;
 
       const repeatGroupId = repeat !== "none" ? crypto.randomUUID() : null;
@@ -1944,7 +1948,8 @@
         const dateStr = formatDate(currentDate);
 
         try {
-          await addDoc(collection(db, "tasks"), {
+          const newRef = push(ref(db, "tasks"));
+          await set(newRef, {
             date: dateStr,
             time,
             content,
@@ -1977,10 +1982,10 @@
     }
 
     async function deleteSingleTask(id) {
-      const { doc, deleteDoc } = window.firebaseFns;
+      const { ref, remove } = window.firebaseFns;
       const db = window.db;
       try {
-        await deleteDoc(doc(db, "tasks", id));
+        await remove(ref(db, `tasks/${id}`));
         closeDateDetailModal();
       } catch (err) {
         console.error("삭제 실패", err);
@@ -2087,10 +2092,10 @@
           closeEditModal();
           openRepeatScopeModal("edit");
         } else {
-          const { doc, updateDoc } = window.firebaseFns;
+          const { ref, update } = window.firebaseFns;
           const db = window.db;
           try {
-            await updateDoc(doc(db, "tasks", id), {
+            await update(ref(db, `tasks/${id}`), {
               date, time, content, category, isDday, emoji, color
             });
             closeEditModal();
@@ -2137,12 +2142,12 @@
       if (!state.pendingAction) return;
 
       const { type, task, formData } = state.pendingAction;
-      const { doc, updateDoc, deleteDoc } = window.firebaseFns;
+      const { ref, update, remove } = window.firebaseFns;
       const db = window.db;
 
       if (type === "edit" && formData) {
         if (scope === "single") {
-          await updateDoc(doc(db, "tasks", task.id), {
+          await update(ref(db, `tasks/${task.id}`), {
             date: formData.date, time: formData.time, content: formData.content,
             category: formData.category, isDday: formData.isDday,
             emoji: formData.emoji, color: formData.color, repeatGroupId: null
@@ -2154,7 +2159,7 @@
             return true;
           });
           for (let t of groupTasks) {
-            await updateDoc(doc(db, "tasks", t.id), {
+            await update(ref(db, `tasks/${t.id}`), {
               time: formData.time, content: formData.content, category: formData.category,
               isDday: formData.isDday, emoji: formData.emoji, color: formData.color
             });
@@ -2162,7 +2167,7 @@
         }
       } else if (type === "delete") {
         if (scope === "single") {
-          await deleteDoc(doc(db, "tasks", task.id));
+          await remove(ref(db, `tasks/${task.id}`));
         } else if (scope === "future" || scope === "all") {
           const groupTasks = state.tasks.filter(t => {
             if (t.repeatGroupId !== task.repeatGroupId) return false;
@@ -2170,7 +2175,7 @@
             return true;
           });
           for (let t of groupTasks) {
-            await deleteDoc(doc(db, "tasks", t.id));
+            await remove(ref(db, `tasks/${t.id}`));
           }
         }
       }
@@ -2223,11 +2228,11 @@
             return;
           }
 
-          const { doc, updateDoc } = window.firebaseFns;
+          const { ref, update } = window.firebaseFns;
           const db = window.db;
           for (let t of state.tasks) {
             if (t.category === cat) {
-              await updateDoc(doc(db, "tasks", t.id), { category: newName });
+              await update(ref(db, `tasks/${t.id}`), { category: newName });
             }
           }
 
