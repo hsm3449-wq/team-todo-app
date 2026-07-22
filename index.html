@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>실시간 팀플 투두리스트</title>
+  <title>우리집 할 일 리스트</title>
   
   <!-- Firebase SDK (Realtime Database CDN) -->
   <script type="module">
@@ -962,38 +962,52 @@
       font-weight: 600;
     }
 
-  @media (max-width: 640px) {
+    .action-scope-desc {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      line-height: 1.4;
+    }
+
+    .action-scope-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .action-scope-buttons .btn {
+      width: 100%;
+      text-align: center;
+    }
+
+    @media (max-width: 640px) {
       .app {
         padding: 16px 8px 32px;
       }
 
-      /* 1. 달력 7칸이 화면 밖으로 절대 팽창하지 못하도록 강제 (핵심!) */
       .calendar-grid {
         grid-template-columns: repeat(7, minmax(0, 1fr));
-        gap: 3px; /* 모바일 화면에 맞춰 칸 여백을 살짝 줄임 */
+        gap: 3px;
       }
 
-      /* 2. 달력 각 칸도 내부 글자 길이 때문에 옆으로 늘어나는 것 차단 */
       .calendar-day {
         min-height: 65px;
         padding: 4px 2px;
-        min-width: 0; /* 글자가 길어도 칸 너비 고정 */
+        min-width: 0;
         overflow: hidden;
       }
 
-      /* 3. 내부 글자 컨테이너 너비 제한 */
       .calendar-day__tasks {
         min-width: 0;
         width: 100%;
       }
 
-      /* 4. 일정 글자가 칸 너비를 넘어가면 무조건 '...'으로 잘리도록 강제 설정 */
       .calendar-task-chip {
         font-size: 0.65rem;
         padding: 2px 4px;
         max-width: 100%;
         min-width: 0;
-        display: block; /* 모바일에서는 확실하게 한 줄로 자르기 위해 block 속성 적용 */
+        display: block;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -1371,10 +1385,9 @@
     }
 
     function initFirebaseSync() {
-      const { ref, onValue } = window.firebaseFns;
+      const { ref, onValue, set } = window.firebaseFns;
       const db = window.db;
 
-      // 할 일 동기화
       onValue(ref(db, "tasks"), (snapshot) => {
         const data = snapshot.val();
         const loadedTasks = [];
@@ -1389,13 +1402,11 @@
         console.error("할 일 동기화 실패: ", error);
       });
 
-      // 카테고리 동기화
       onValue(ref(db, "categories"), (snapshot) => {
         const data = snapshot.val();
         if (data && Array.isArray(data)) {
           state.categories = data;
         } else {
-          // 데이터가 없으면 기본값 세팅
           set(ref(db, "categories"), DEFAULT_CATEGORIES);
           state.categories = [...DEFAULT_CATEGORIES];
         }
@@ -2233,6 +2244,8 @@
           }
         }
       }
+      
+      // 버그 수정: 작업 완료 후 반복 범위 선택 모달이 자동으로 닫히도록 추가함
       closeRepeatScopeModal();
       closeDateDetailModal();
     }
