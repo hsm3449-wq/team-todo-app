@@ -1059,8 +1059,8 @@
       <div class="view-panel__head">
         <h2>전체 할 일</h2>
         <div class="view-toggle">
-          <button type="button" class="view-toggle__btn is-active" data-view="list">리스트</button>
-          <button type="button" class="view-toggle__btn" data-view="calendar">달력</button>
+          <button type="button" class="view-toggle__btn" data-view="list">리스트</button>
+          <button type="button" class="view-toggle__btn is-active" data-view="calendar">달력</button>
           <button type="button" class="view-toggle__btn" data-view="stats">통계</button>
         </div>
       </div>
@@ -1074,12 +1074,12 @@
         <div class="category-filter-bar" id="categoryFilterBar"></div>
       </div>
 
-      <div class="view-content view-content--list is-visible" id="listView">
+      <div class="view-content view-content--list" id="listView">
         <ul class="task-list" id="taskList"></ul>
         <p class="empty-message" id="listEmpty">등록된 할 일이 없습니다.</p>
       </div>
 
-      <div class="view-content view-content--calendar" id="calendarView">
+      <div class="view-content view-content--calendar is-visible" id="calendarView">
         <div class="calendar-nav">
           <button type="button" class="calendar-nav__btn" id="prevMonth" aria-label="이전 달">‹</button>
           <h3 class="calendar-nav__title" id="calendarTitle"></h3>
@@ -1244,8 +1244,8 @@
     const state = {
       tasks: [],
       categories: [...DEFAULT_CATEGORIES],
-      currentView: "list",
-      currentFilter: "all",
+      currentView: "calendar", // 초기 뷰를 달력으로 설정
+      currentFilter: "all",    // 초기 필터를 전체 상태로 설정
       currentCategoryFilter: "all",
       calendarYear: new Date().getFullYear(),
       calendarMonth: new Date().getMonth(),
@@ -2205,10 +2205,7 @@
     async function applyRepeatScope(scope) {
       if (!state.pendingAction) return;
 
-      // 1. 실행할 데이터를 먼저 안전하게 복사해서 백업해 둠
       const actionData = state.pendingAction;
-      
-      // 2. 팝업창을 즉시 닫고 pendingAction 초기화
       closeRepeatScopeModal();
       closeDateDetailModal();
       state.pendingAction = null;
