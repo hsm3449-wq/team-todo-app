@@ -281,15 +281,6 @@
       font-size: 0.75rem;
     }
 
-    .task-item__assignee {
-      background: var(--primary-soft);
-      color: var(--primary-hover);
-      padding: 2px 8px;
-      border-radius: 6px;
-      font-weight: 700;
-      font-size: 0.75rem;
-    }
-
     .task-item__repeat-tag {
       background: #e0f2fe;
       color: #0284c7;
@@ -1070,7 +1061,7 @@
     </div>
   </div>
 
-  <!-- 할 일 추가/수정 통합 모달 (담당자 입력 포함) -->
+  <!-- 할 일 추가/수정 통합 모달 -->
   <div class="modal" id="editModal" aria-hidden="true">
     <div class="modal__backdrop" id="editModalBackdrop"></div>
     <div class="modal__dialog" role="dialog" aria-labelledby="editModalTitle">
@@ -1090,10 +1081,6 @@
             <select id="editTaskCategory"></select>
             <button type="button" class="category-manage-btn" id="openCategoryModalBtn">⚙️ 관리</button>
           </div>
-        </div>
-        <div class="edit-form__row">
-          <label for="editTaskAssignee">담당자 (누가 해요?)</label>
-          <input type="text" id="editTaskAssignee" placeholder="예: 수민, 팀원1" required>
         </div>
         <div class="edit-form__row">
           <label for="editTaskContent">내용</label>
@@ -1247,7 +1234,6 @@
       editTaskId: document.getElementById("editTaskId"),
       editTaskDate: document.getElementById("editTaskDate"),
       editTaskCategory: document.getElementById("editTaskCategory"),
-      editTaskAssignee: document.getElementById("editTaskAssignee"),
       editTaskContent: document.getElementById("editTaskContent"),
       editTaskRepeat: document.getElementById("editTaskRepeat"),
       editRepeatRow: document.getElementById("editRepeatRow"),
@@ -1332,7 +1318,6 @@
       return {
         ...task,
         category: task.category || "개인",
-        assignee: task.assignee || "팀원",
         repeat: task.repeat || "none",
         repeatGroupId: task.repeatGroupId || null,
         isDday: Boolean(task.isDday),
@@ -1356,7 +1341,6 @@
       localStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(state.categories));
     }
 
-    // 파이어베이스 실시간 동기화 리스너 연결
     function initFirebaseSync() {
       const { collection, onSnapshot } = window.firebaseFns;
       const db = window.db;
@@ -1657,13 +1641,6 @@
         meta.appendChild(catBadge);
       }
 
-      if (task.assignee) {
-        const assigneeBadge = document.createElement("span");
-        assigneeBadge.className = "task-item__assignee";
-        assigneeBadge.textContent = `👤 ${task.assignee}`;
-        meta.appendChild(assigneeBadge);
-      }
-
       if (task.repeat && task.repeat !== "none") {
         const repeatTag = document.createElement("span");
         repeatTag.className = "task-item__repeat-tag";
@@ -1814,10 +1791,9 @@
       chip.style.setProperty("--task-color", getTaskColor(task));
 
       const emojiText = hasTaskEmoji(task) ? `${getTaskEmoji(task)} ` : "";
-      const assigneeText = task.assignee ? `[${task.assignee}] ` : "";
       const ddayText = task.isDday ? `[${calculateDday(task.date)}] ` : "";
       const timeText = task.time ? `${formatDisplayTime(task.time)} ` : "";
-      chip.title = `${ddayText}${assigneeText}[${task.category}] ${timeText}${emojiText}${task.content}`.trim();
+      chip.title = `${ddayText}[${task.category}] ${timeText}${emojiText}${task.content}`.trim();
 
       if (hasTaskEmoji(task)) {
         const emoji = document.createElement("span");
@@ -1828,7 +1804,7 @@
 
       const text = document.createElement("span");
       text.className = "calendar-task-chip__text";
-      text.textContent = (task.isDday ? `📌 ` : "") + `${task.assignee ? task.assignee + ': ' : ''}` + task.content;
+      text.textContent = (task.isDday ? `📌 ` : "") + task.content;
       chip.appendChild(text);
 
       return chip;
@@ -1943,7 +1919,7 @@
       }
     }
 
-    async function addTasksData({ startDateStr, category, assignee, content, repeat, time, isDday, emoji, color }) {
+    async function addTasksData({ startDateStr, category, content, repeat, time, isDday, emoji, color }) {
       const { collection, addDoc } = window.firebaseFns;
       const db = window.db;
 
@@ -1973,7 +1949,6 @@
             time,
             content,
             category,
-            assignee,
             repeat,
             repeatGroupId,
             isDday,
@@ -2024,7 +1999,6 @@
         elements.editTaskDate.value = task.date;
         elements.editTaskContent.value = task.content;
         elements.editTaskCategory.value = task.category || state.categories[0];
-        elements.editTaskAssignee.value = task.assignee || "";
         elements.editTaskIsDday.checked = Boolean(task.isDday);
 
         elements.editTaskUseTime.checked = Boolean(task.time);
@@ -2049,7 +2023,6 @@
         elements.editTaskDate.value = defaultDate || formatDate(new Date());
         elements.editTaskContent.value = "";
         elements.editTaskCategory.value = state.categories[0];
-        elements.editTaskAssignee.value = "";
         elements.editTaskIsDday.checked = false;
 
         elements.editTaskUseTime.checked = false;
@@ -2092,7 +2065,6 @@
       const date = elements.editTaskDate.value;
       const content = elements.editTaskContent.value.trim();
       const category = elements.editTaskCategory.value;
-      const assignee = elements.editTaskAssignee.value.trim() || "팀원";
       const useTime = elements.editTaskUseTime.checked;
       const time = useTime ? elements.editTaskTime.value : "";
       const isDday = elements.editTaskIsDday.checked;
@@ -2100,11 +2072,11 @@
 
       if (!date || !content) return;
 
-      const formData = { date, content, category, assignee, time, isDday, emoji, color };
+      const formData = { date, content, category, time, isDday, emoji, color };
 
       if (!id) {
         const repeat = elements.editTaskRepeat.value;
-        await addTasksData({ startDateStr: date, category, assignee, content, repeat, time, isDday, emoji, color });
+        await addTasksData({ startDateStr: date, category, content, repeat, time, isDday, emoji, color });
         closeEditModal();
       } else {
         const task = state.tasks.find((item) => item.id === id);
@@ -2119,7 +2091,7 @@
           const db = window.db;
           try {
             await updateDoc(doc(db, "tasks", id), {
-              date, time, content, category, assignee, isDday, emoji, color
+              date, time, content, category, isDday, emoji, color
             });
             closeEditModal();
           } catch (err) {
@@ -2172,7 +2144,7 @@
         if (scope === "single") {
           await updateDoc(doc(db, "tasks", task.id), {
             date: formData.date, time: formData.time, content: formData.content,
-            category: formData.category, assignee: formData.assignee, isDday: formData.isDday,
+            category: formData.category, isDday: formData.isDday,
             emoji: formData.emoji, color: formData.color, repeatGroupId: null
           });
         } else if (scope === "future" || scope === "all") {
@@ -2184,7 +2156,7 @@
           for (let t of groupTasks) {
             await updateDoc(doc(db, "tasks", t.id), {
               time: formData.time, content: formData.content, category: formData.category,
-              assignee: formData.assignee, isDday: formData.isDday, emoji: formData.emoji, color: formData.color
+              isDday: formData.isDday, emoji: formData.emoji, color: formData.color
             });
           }
         }
@@ -2251,7 +2223,6 @@
             return;
           }
 
-          // 파이어베이스 데이터 중 해당 카테고리 이름 일괄 변경
           const { doc, updateDoc } = window.firebaseFns;
           const db = window.db;
           for (let t of state.tasks) {
@@ -2346,7 +2317,6 @@
       initCustomizePickers();
       setDefaultFormValues();
       
-      // 파이어베이스 실시간 데이터 로드 대기 후 렌더링
       initFirebaseSync();
 
       elements.openAddModalBtn.addEventListener("click", () => openEditModal(null));
