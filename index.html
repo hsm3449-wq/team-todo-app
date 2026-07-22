@@ -962,13 +962,32 @@
       font-weight: 600;
     }
 
-    @media (max-width: 640px) {
+   @media (max-width: 640px) {
       .app {
-        padding: 20px 14px 36px;
+        padding: 16px 10px 32px;
       }
 
+      /* 모바일에서는 달력 요일 글자를 더 아담하게 조절 */
+      .calendar-weekday {
+        font-size: 0.7rem;
+        padding: 4px 0;
+      }
+
+      /* 모바일 칸 크기와 여백을 줄여서 밀림 방지 */
       .calendar-day {
-        min-height: 80px;
+        min-height: 70px;
+        padding: 3px;
+      }
+
+      /* 달력 안에 들어가는 일정 칩(글자) 크기도 모바일에 맞게 축소 */
+      .calendar-task-chip {
+        font-size: 0.6rem;
+        padding: 1px 3px;
+      }
+
+      .calendar-day__number {
+        font-size: 0.75rem;
+        margin-bottom: 2px;
       }
     }
   </style>
